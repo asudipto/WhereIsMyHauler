@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Fleet Vehicle(s) locator</title>
+    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel='stylesheet' type='text/css' href='styles.css' />
+
+    <style>
+    
+    </style>
+</head>
+
+<body>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <div class="h3 bg-info">Specify Tracking Parameters:</div>
+    <div class="tracking-params-form">
+    <form class="form-horizontal" action="/WhereIsMyHauler.html" method="GET">
+        <div class="form-group">
+            <label for="email" class="col-sm-2 control-label">API Key: </label>
+            <div class="col-sm-6">
+                <input type="text" id="APIKey" placeholder="API Key" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="email" class="col-sm-2 control-label">Admin Key: </label>
+            <div class="col-sm-6">
+                <input type="text" id="AdminKey" placeholder="Admin Key" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="email" class="col-sm-2 control-label">Project Id: </label>
+            <div class="col-sm-6">
+                <input type="text" id="ProjectId" placeholder="Project Id" class="form-control">
+            </div>
+        </div>
+
+        <div class="col-sm-offset-2 col-sm-2">
+            <button type="submit" id="trackObjects" class="btn btn-info" onclick="storeProjectParams()">Track Objects</button>
+        </div>
+    </form>
+
+
+    <script type="text/javascript" language="JavaScript">
+        function storeProjectParams() {
+            var APIKey = document.getElementById("APIKey").value;
+            localStorage.setItem('APIKey', APIKey);
+            console.log("APIKey set = " + APIKey);
+
+            var AdminKey = document.getElementById("AdminKey").value;
+            localStorage.setItem('AdminKey', AdminKey );
+            console.log("AdminKey set = " + AdminKey);
+
+            var ProjectId = document.getElementById("ProjectId").value;
+            localStorage.setItem('ProjectId', ProjectId );
+            console.log("ProjectId set = " + ProjectId);
+
+            document.getElementById("APIKey").value = APIKey;
+            document.getElementById("AdminKey").value = AdminKey;
+            document.getElementById("ProjectId").value = ProjectId;
+        }
+    </script>
+
+    <script type="text/javascript" language="JavaScript">
+        $(document).ready(function () {
+            console.log("Inside document.ready");
+
+            var APIKey = localStorage.getItem("APIKey");
+            var AdminKey = localStorage.getItem("AdminKey");
+            var ProjectId = localStorage.getItem("ProjectId");
+
+            console.log("APIKey retrieved = " + APIKey);
+            console.log("AdminKey retrieved = " + AdminKey);
+            console.log("ProjectId retrieved = " + ProjectId);
+
+            document.getElementById("APIKey").value = APIKey;
+            document.getElementById("AdminKey").value = AdminKey;
+            document.getElementById("ProjectId").value = ProjectId;
+        });
+    </script>
+
+</body>
+
+</html>

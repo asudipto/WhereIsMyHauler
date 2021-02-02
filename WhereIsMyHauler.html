@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Fleet Vehicle(s) locator</title>
+    
+    <link rel='stylesheet' type='text/css' href='https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.4.0/maps/maps.css'>
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel='stylesheet' type='text/css' href='styles.css' />
+</head>
+
+<body>
+    <script type="text/javascript" src='objects.js'></script>
+    
+    <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.4.0/maps/maps-web.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+
+    <div class='control-panel'>
+        <div class='heading'>
+            <img src="img/logo.png">
+        </div>
+        <div id='object-list'></div>
+    </div>
+    <div id='map' class='map'></div>
+
+    <script>
+        var APIKey = localStorage.getItem("APIKey");
+        var gProjectId = localStorage.getItem("ProjectId");
+
+        var map = tt.map({
+            key: APIKey,
+            container: "map",
+            center: [73.791250, 18.593076],
+            zoom: 10
+        });
+
+        var listOfObjects = document.getElementById('object-list');
+        var listObjectMarkers = {};
+        var listFences = {};
+        var listObjects = {};
+
+        var minLongi = -180;   //set to max longi
+        var minLati = -90;        //set to max lati
+        var maxLongi = 180;
+        var maxLati = 90;
+
+        var marginViewPort = 0.01
+
+        var bottomLeft_ObjectsAndFences_Longi = maxLongi;   //set to max longi
+        var bottomLeft_ObjectsAndFences_Lati = maxLati;     //set to max lati
+        var topRight_ObjectsAndFences_Longi = minLongi;
+        var topRight_ObjectsAndFences_Lati = minLati;
+
+
+        //Currently the object is picked up from objects.js
+        //This could potentially change in the future
+        objects.features.forEach(function (object) {
+            //var address = object.properties.address;
+            var location = object.geometry.coordinates;
+            var objectId = object.id
+            var objectName = object.name
+
+            console.log("object location longi = " + location[0] + ", lati = " + location[1]);
+
+            listObjects[objectId] = object
+
+            var marker = new tt.Marker().setLngLat([location[0], location[1]]);
+
+            var projectName = object.properties.projectName;
+            var projectId = object.properties.projectId;
+            var projectObjectsList = document.getElementById(projectId);
+
+
+            var popup = new tt.Popup().setLngLat([location[0], location[1]]).setText(objectName);
+            marker.setPopup(popup);
+
+
+            if (projectObjectsList === null) {
+
+                var projectObjectsListHeading = listOfObjects.appendChild(document.createElement('h3'));
+                projectObjectsListHeading.innerHTML = projectName;
+
+                projectObjectsList = listOfObjects.appendChild(document.createElement('div'));
+                projectObjectsList.className = 'list-entries-container';
+
+
+                projectObjectsListHeading.addEventListener('click', function (e) {
+                    console.log('Inside projectObjectsListHeading.addEventListener click');
+
+                    fitToViewport();
+                });
+            } else {
+                listObjectMarkers[objectId].addLayer(marker);
+            }
+
+            listObjectMarkers[objectId] = marker;
+            marker.addTo(map);
+
+            var details = buildLocation(projectObjectsList, objectName);
+
+            map.on('click', marker,
+                (function (details, projectId) {
+                    console.log('Inside map.on click listener');
+
+                    var activeItem = document.getElementsByClassName('selected');
+                    return function () {
+                        if (activeItem[0]) {
+                            activeItem[0].classList.remove('selected');
+                        }
+                        details.classList.add('selected');
+                        openProjectTab(projectId);
+                    }
+                })(details, projectId)
+            );
+
+            details.addEventListener('click',
+                (function (marker) {
+                    console.log('Inside details.addEventListener click');
+
+                    var activeItem = document.getElementsByClassName('selected');
+                    return function () {
+                        if (activeItem[0]) {
+                            activeItem[0].classList.remove('selected');
+                        }
+                        details.classList.add('selected');
+                        map.setCenter(marker.getLngLat());
+                        map.setZoom(18);
+                        marker.togglePopup();
+                    }
+                })(marker)
+            );
+
+        });
+
+
+        console.log("After objects.features.forEach :: Calling fitToViewport()");
+        fitToViewport();
+
+        $(function () {
+            console.log('Inside accordion');
+
+            $("#object-list").accordion({
+                "icons": {
+                    "header": "ui-icon-plus",
+                    "activeHeader": "ui-icon-minus"
+                },
+                "heightStyle": "content",
+                "collapsible": true,
+                "active": false
+            });
+
+            console.log('Exiting accordion');
+        });
+
+
+        
+        map.on('load', function(){
+            console.log('Inside map.on load');
+            
+            displayFences();
+        })
+
+
+        //Fences are fetched using the Geofences API
+        var displayFences = function(){
+            console.log('Inside displayFences');
+
+            listFences = {};
+
+            fetch('https://api.tomtom.com/geofencing/1/projects/' + gProjectId + '?&key=' + APIKey + '&defaultObjects=false')
+                .then(response => response.json())
+                .then( function(data) {
+                console.log("displayFences :: data.fences = ")
+                console.log(data.fences)
+
+                data.fences.forEach(function (fence) {
+                    console.log("displayFences :: fence = ")
+                    console.log(fence)
+
+                    var fenceName = fence.name;
+                    var fenceId = fence.id;
+                    console.log('displayFences :: fenceName = ' + fenceName + ', fenceId = ' + fenceId);
+
+
+                    fetch('https://api.tomtom.com/geofencing/1/fences/' + fenceId + '?key=' + APIKey)
+                    
+                        .then(response => response.json())
+                        .then( function(data) {
+                        console.log("displayFences :: data = ")
+                        console.log(data)
+
+                        listFences[fenceId] = data
+
+                        map.addLayer({
+                            'id': fenceName,
+                            'type': 'fill',
+                            'source': {
+                                'type': 'geojson',
+                                'data': data
+                            },
+                            'paint': {
+                                'fill-color': 'blue',  //'lightblue'
+                                'fill-outline-color': 'blue',
+                                'fill-opacity': 0.55
+                            }
+                        })
+
+                        fitToViewport();
+                    })
+            
+                });
+            
+            });
+
+        }
+
+
+
+        function fitToViewport() {
+            console.log("fitToViewport :: Entry")
+            
+            bottomLeft_ObjectsAndFences_Longi = maxLongi;   //set to max longi
+            bottomLeft_ObjectsAndFences_Lati = maxLati;     //set to max lati
+            topRight_ObjectsAndFences_Longi = minLongi;
+            topRight_ObjectsAndFences_Lati = minLati;
+
+            Object.keys(listFences).forEach(function(key) {
+                console.log("fitToViewport :: listFences =")
+                console.log(listFences)
+
+                console.log("fitToViewport :: fence key = " + key + ", value = " + listFences[key]);
+
+                listFences[key].geometry.coordinates[0].forEach(element => {
+                    console.log("fitToViewport :: fence point longi = " + element[0]);
+                    console.log("fitToViewport :: fence point lati = " + element[1]);
+
+                    bottomLeft_ObjectsAndFences_Longi = Math.min(bottomLeft_ObjectsAndFences_Longi, element[0])
+                    bottomLeft_ObjectsAndFences_Lati = Math.min(bottomLeft_ObjectsAndFences_Lati, element[1])
+
+                    topRight_ObjectsAndFences_Longi = Math.max(topRight_ObjectsAndFences_Longi, element[0])
+                    topRight_ObjectsAndFences_Lati = Math.max(topRight_ObjectsAndFences_Lati, element[1])
+
+                    console.log("fitToViewport :: bottomLeft_ObjectsAndFences_Longi = " + bottomLeft_ObjectsAndFences_Longi)
+                    console.log("fitToViewport :: bottomLeft_ObjectsAndFences_Lati = " + bottomLeft_ObjectsAndFences_Lati)
+
+                    console.log("fitToViewport :: topRight_ObjectsAndFences_Longi = " + topRight_ObjectsAndFences_Longi)
+                    console.log("fitToViewport :: topRight_ObjectsAndFences_Lati = " + topRight_ObjectsAndFences_Lati)
+                });
+            });
+
+            Object.keys(listObjects).forEach(function(key) {
+                console.log("fitToViewport :: listObjects =")
+                console.log(listObjects)
+
+                console.log("fitToViewport :: object key = " + key + ", value = " + listObjects[key]);
+
+                bottomLeft_ObjectsAndFences_Longi = Math.min(bottomLeft_ObjectsAndFences_Longi, listObjects[key].geometry.coordinates[0])
+                console.log("fitToViewport :: listObjects[key].geometry.coordinates[0] = " + listObjects[key].geometry.coordinates[0])
+
+                bottomLeft_ObjectsAndFences_Lati = Math.min(bottomLeft_ObjectsAndFences_Lati, listObjects[key].geometry.coordinates[1])
+                
+                topRight_ObjectsAndFences_Longi = Math.max(topRight_ObjectsAndFences_Longi, listObjects[key].geometry.coordinates[0])
+                topRight_ObjectsAndFences_Lati = Math.max(topRight_ObjectsAndFences_Lati, listObjects[key].geometry.coordinates[1])
+
+                console.log("fitToViewport :: bottomLeft_ObjectsAndFences_Longi = " + bottomLeft_ObjectsAndFences_Longi)
+                console.log("fitToViewport :: bottomLeft_ObjectsAndFences_Lati = " + bottomLeft_ObjectsAndFences_Lati)
+
+                console.log("fitToViewport :: topRight_ObjectsAndFences_Longi = " + topRight_ObjectsAndFences_Longi)
+                console.log("fitToViewport :: topRight_ObjectsAndFences_Lati = " + topRight_ObjectsAndFences_Lati)
+            });
+
+            if (bottomLeft_ObjectsAndFences_Longi > minLongi + marginViewPort){
+                bottomLeft_ObjectsAndFences_Longi = bottomLeft_ObjectsAndFences_Longi - marginViewPort
+            }
+            if (bottomLeft_ObjectsAndFences_Lati > minLati + marginViewPort){
+                bottomLeft_ObjectsAndFences_Lati = bottomLeft_ObjectsAndFences_Lati - marginViewPort
+            }
+            if (topRight_ObjectsAndFences_Longi < maxLongi - marginViewPort){
+                topRight_ObjectsAndFences_Longi = topRight_ObjectsAndFences_Longi + marginViewPort
+            }
+            if (topRight_ObjectsAndFences_Lati < maxLongi - marginViewPort){
+                topRight_ObjectsAndFences_Lati = topRight_ObjectsAndFences_Lati + marginViewPort
+            }
+
+            console.log("fitToViewport :: bottomLeft_ObjectsAndFences_Longi = " + bottomLeft_ObjectsAndFences_Longi)
+            console.log("fitToViewport :: bottomLeft_ObjectsAndFences_Lati = " + bottomLeft_ObjectsAndFences_Lati)
+
+            console.log("fitToViewport :: topRight_ObjectsAndFences_Longi = " + topRight_ObjectsAndFences_Longi)
+            console.log("fitToViewport :: topRight_ObjectsAndFences_Lati = " + topRight_ObjectsAndFences_Lati)
+
+            var sw = [bottomLeft_ObjectsAndFences_Longi, bottomLeft_ObjectsAndFences_Lati];
+            var ne = [topRight_ObjectsAndFences_Longi, topRight_ObjectsAndFences_Lati];
+            
+            map = map.setMaxBounds([sw, ne]);
+            map.fitBounds(map.getBounds(), { padding: 100, linear: true });
+        }
+
+        function getBounds(data) {
+            var btmRight;
+            var topLeft;
+            if (data.viewport) {
+                console.log("getBounds :: data.viewport is true")
+                btmRight = [data.viewport.btmRightPoint.lng, data.viewport.btmRightPoint.lat];
+                topLeft = [data.viewport.topLeftPoint.lng, data.viewport.topLeftPoint.lat];
+            } else {
+
+            }
+            console.log("getBounds :: topLeft = " + topLeft)
+            console.log("getBounds :: btmRight = " + btmRight)
+
+            return [btmRight, topLeft];
+        }
+
+        function buildLocation(htmlParent, text) {
+            console.log('Inside buildLocation');
+
+            var details = htmlParent.appendChild(document.createElement('a'));
+            details.href = '#';
+            details.className = 'list-entry';
+            details.innerHTML = text;
+            return details;
+        };
+
+        function openProjectTab(selected_id) {
+            console.log('openProjectTab :: Entry');
+
+            var index = $('#object-list').find('div.list-entries-container');
+            for (var j = 0; j < index.length; j++) {
+                if (index[j].id == selected_id) {
+                    console.log('openProjectTab :: Inside accordion');
+                    
+                    $("#object-list").accordion("option", {
+                        "active": j
+                    });
+
+                    console.log('openProjectTab :: Exiting accordion');
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
