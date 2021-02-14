@@ -35,3 +35,7 @@ https://github.com/josejoserojas/TrackingFamilyPostmanCollection - including Cre
 (and here:\
 https://github.com/tomtom-international/postman-collections)
 
+Web app rendered sample image:
+
+<img src="https://github.com/asudipto/WhereIsMyHauler/blob/main/img/Fence%20and%20Object.png" width="800px" height="auto" raw=true  />
+
