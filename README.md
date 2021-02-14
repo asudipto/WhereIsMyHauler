@@ -6,7 +6,8 @@ It can provide tracking service to fleet operators, for objects of various types
 # How to use this?
 This can be used in two ways:\
 a) Locally - described in section below. Can be deployed on a Mac or a PC\
-b) Via Internet - please take help from your technical team to follow this path. Do consider adding good security measures for the deployment
+b) Via Internet - please take help from your technical team to follow this path.\
+Do consider adding good security measures for the deployment
 
 To use this locally (from a Mac/PC at your office/home):\
 i)     Install nodejs and related http-server package\
