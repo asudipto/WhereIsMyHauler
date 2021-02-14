@@ -1,5 +1,5 @@
 # WhereIsMyHauler
-This is a Web App that tracks your hauler fleet on a Tomtom Map.
+This is a Web App that tracks your hauler fleet on a Tomtom Map.\
 It can provide tracking service to fleet operators, for objects of various types.
 
 
